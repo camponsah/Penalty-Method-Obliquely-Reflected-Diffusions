@@ -50,7 +50,8 @@ knitr::opts_chunk$set(
   warning = FALSE,  # don't show warnings
   message = FALSE,  # don't show messages (less serious warnings)
   cache = FALSE,    # set to TRUE to save results from last compilation
-  fig.align = "center"# center figures
+  fig.align = "center",# center figures
+  fig.pos='h'
 )
 
 ## libraries
@@ -69,7 +70,7 @@ Given a stochastic differential equation (SDE) with oblique reflection :
 \begin{equation}
 dX(t)= g(X(t))dt + \sigma(X(t))dW(t) + r(X(t))d\ell(t)
 \end{equation}
-with $\ell(t)$ is a continuous nondecreasing process with $\ell(0) = 0$  which can increase only when it inside it domain and reflected back inside its domain in the direction of r(z) as X hits the domain at a point z. Once the process is in it domain, the process $X(t)$ behaves as a solution to the SDE below.
+with $\ell(t)$ is a continuous nondecreasing process with $\ell(0) = 0$  which can increase only when it inside it domain and reflected back inside its domain in the direction of r(z) as X hits the domain at a point z. Once the process is in it domain, $X(t)$ behaves as a solution to the SDE below.
 
 \begin{equation}
 dX(t) = g(X(t)) dt + \sigma(X(t)) dW(t).
@@ -89,42 +90,53 @@ where $\epsilon_1, \epsilon_2,... \sim N(0; \epsilon I_d)$. We define this funct
 
 
 ##  Obliquely reflected brownian motion with  penalty term
-We simulate a brownian modtion with a penalty term for half-line.
+We simulate a brownian motion with a penalty term for half-line.
 
 $$ z(t+\epsilon)\approx z(t) +[\varphi(d(z(t)))\times r(y(z(t)))]\epsilon + \varepsilon_{t+\epsilon}, $$
 
-where $Z(0)=1, \quad \varepsilon_{t+\epsilon}\sim \mathcal{N}(0,\epsilon), \epsilon=0.01$,  time horizon $t=10$ and 
+where $Z(0)=1, \quad \varepsilon_{t+\epsilon}\sim \mathcal{N}(0,\epsilon), \epsilon=0.01$,  time horizon $t=10, a=100, $ and 
 $$\varphi(d(z(t)))\times r(y(z(t)))=\textit{ penalty term with reflection}=\begin{cases}
 0, \quad if \quad z(t)\geq 0\\
 a[z(t)]^p, if \quad z(t)< 0
 \end{cases}$$
 
+```{r ,fig.width=6,fig.height=4,fig.cap="Obliquely reflected brownian motion with  penalty"}
 
-
-
-
-
-```{r ,fig.width=8,fig.height=6}
-### function to simulate standard brownian motion
-BrownianM<-function(Begin, End,Step, X0){
-  t<-seq(Begin,End,Step)
-  n=length(t)-1
-  Xt<-cumsum(c(X0,rnorm(n,0,sqrt(Step))))
-  return(data.frame(t,Xt))
+### BM with reflection: drift=0, sigma=1, X0=1 and penalty
+SD_RF <- function(begin, end,step=0.01,a=100,p=0.1,r=1, X0=0){
+  t<-seq(begin,end,step) ### create sequence 
+  n=length(t)
+  dt  <- step
+  dw<-rnorm(n, 0, sqrt(step))
+  X<-NULL
+  X[1] <- X0
+  ## penalty function
+penalty<- function(a,p,r,x){
+ ifelse(x>=0,0,a*((abs(x))^p))
 }
-X1<-BrownianM(0,10,Step = 0.01,X0=1)
-plot(X1$t, X1$Xt, ylab ="X(t)",xlab ="t",type="l", lwd=1,
-     main="Brownian Motion")
+  for (i in 2:n) {
+     X[i] <-  X[i-1] + penalty(a,p,r,X[i-1])*dt + dw[i]
+  }
+  return(data.frame(t,X));
+}
+
+X1<-SD_RF(0,10,step = 0.01,X0=1)
+X1%>%gather(key,value, X) %>%
+    ggplot(aes(x=t, y=value)) +
+    geom_line() +theme_bw()+
+  ggtitle("") +
+  xlab("t") + ylab("X")
 
 ```
 
 
 
 ##  Convergence on half-line
-A reflected brownian motion for unit negative drift has a stationary distribution, which is exponential with mean $\dfrac{1}{2}$, which serves as a limiting distribution for a long-time limit.
+A reflected brownian motion for unit negative drift has a stationary distribution, which is exponential with mean $\dfrac{1}{2}$, which serves as a limiting distribution for a long-time limit. See figure (1) below for $a=100$
 
 ```{r, echo=FALSE, fig.cap="Stationary distribution of reflected brownian motion with unit negative drift ", out.width = '80%'}
-knitr::include_graphics("C:/Users/Charles/Documents/UNR/BOOKS/SEM8/Stochastic Simulation/Rplot-Exponential")
+knitr::include_graphics(
+  "C:/Users/Charles/Documents/UNR/BOOKS/SEM8/Stochastic Simulation/Rplot-Exponential")
 ```
 
 
@@ -144,7 +156,7 @@ $$
 where $\Sigma=\begin{pmatrix}\epsilon & 0\\0 & \epsilon\end{pmatrix}$ and $\vec{Z(.)}$ is a BM with 2-D
 
 
-```{r ,fig.width=8,fig.height=6}
+```{r ,fig.width=6,fig.height=4}
 ### function to simulate multidimentional Brownian Motion
 Multi_BrownianM<-function(Begin, End,Step, X0){
   t<-seq(Begin,End,Step)
@@ -181,7 +193,7 @@ $$
 dX(t)=3(2-X(t))dt +2dW(t)
 $$
 
-```{r ,fig.width=8,fig.height=6}
+```{r ,fig.width=6,fig.height=4}
 ### simulate ORNSTEIN-UHLENBECK  Process
 #Mu=long run mean, lambda = mean reversion speed sigma=
 #set.seed(12345)
@@ -210,7 +222,7 @@ ggplot(data = X3, aes(x=t, y=X)) +
 
 #  Ornstein-Uhlenbeck process repeated with step $\epsilon=0.002, X(0)=2$ and time horizon $t=2$ 
 
-```{r ,fig.width=8,fig.height=6}
+```{r ,fig.width=6,fig.height=4}
 
 X4<-ornstein_uhlenbeck(0,4,Step = 0.002,Mu=2,lambda = 3,sigma = 2,X0=2)
 ggplot(data = X4, aes(x=t, y=X)) +
@@ -227,7 +239,7 @@ Distance
 
 # Comparing Ornstein-Uhlenbeck processes using KS test
 
-```{r ,fig.width=8,fig.height=6}
+```{r ,fig.width=6,fig.height=4}
 ks_p_value<-NULL
 K<-100
 for (i in 1:K) {
@@ -247,7 +259,7 @@ points(rep(0.05,K),type = "l", col="red")
 # Two-dimensional SDE 
 
 
-```{r ,eval=FALSE,fig.width=8,fig.height=6}
+```{r ,eval=FALSE,fig.width=6,fig.height=4}
 SDE_2D <- function(Begin, End,Step,X0){
   mu <- c(0,0) # Mean 
   sigma <- matrix(c(Step, 0, 0, Step),2)
@@ -283,7 +295,7 @@ ggplot(data = X6, aes(x=X1t, y=X2t)) +
 
 #  Comparing 2-D SDE processes using Peacok test
 
-```{r ,eval=FALSE,fig.width=8,fig.height=6}
+```{r ,eval=FALSE,fig.width=6,fig.height=4}
 peacock_p_value<-NULL
 K<-100
 for (i in 1:K) {
@@ -300,13 +312,6 @@ points(rep(0.05,K),type = "l", col="red")
 ```
 
 
-
-# Convergence on half-line
-A reflected brownian motion for unit negative drift has a stationary distribution, which is exponential with mean $\dfrac{1}{2}$, which serves as a limiting distribution for a long-time limit.
-
-```{r, fig.cap="Stationary distribution of reflected brownian motion with unit negative drift ", out.width = '100%'}
-knitr::include_graphics("C:/Users/Charles/Documents/UNR/BOOKS/SEM8/Stochastic Simulation/Rplot-Exponential")
-```
 
 
 
