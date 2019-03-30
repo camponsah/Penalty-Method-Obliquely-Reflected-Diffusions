@@ -50,8 +50,8 @@
  
  ## Example
  ## Your drift and sigma must be functions or numbers 
- drift<-function(x){4*(2-x)} # Unstein-Uhlenbeck drift
- sigma1<-function(x){2*x}
+ drift<-function(x){4*(2-x)} # drift term
+ sigma1<-function(x){2*x}    # volatility term
  BM<-SDE_RF(0,10,step = 0.001,drift = drift, sigma = sigma1)
  plot(BM$t,BM$X, type="l", xlab="X", ylab="t")
  

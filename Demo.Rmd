@@ -1,6 +1,6 @@
 ---
 title: "Oblique Reflected Diffusion Simulation with Penalty Method"
-author: "Charles Amponsah, Andrey Sarantsev"
+author: "Charles Amponsah"
 date: "`r format(Sys.time(), '%d %B, %Y')`"
 output: pdf_document
 number_sections: true
@@ -94,7 +94,7 @@ We simulate a brownian motion with a penalty term for half-line.
 
 $$ z(t+\epsilon)\approx z(t) +[\varphi(d(z(t)))\times r(y(z(t)))]\epsilon + \varepsilon_{t+\epsilon}, $$
 
-where $Z(0)=1, \quad \varepsilon_{t+\epsilon}\sim \mathcal{N}(0,\epsilon), \epsilon=0.01$,  time horizon $t=10, a=100, $ and 
+where $Z(0)=1, \quad \varepsilon_{t+\epsilon}\sim \mathcal{N}(0,\epsilon), \epsilon=0.01$,  time horizon $t=1, a=100,p=0.1 $ and 
 $$\varphi(d(z(t)))\times r(y(z(t)))=\textit{ penalty term with reflection}=\begin{cases}
 0, \quad if \quad z(t)\geq 0\\
 a[z(t)]^p, if \quad z(t)< 0
@@ -102,30 +102,61 @@ a[z(t)]^p, if \quad z(t)< 0
 
 ```{r ,fig.width=6,fig.height=4,fig.cap="Obliquely reflected brownian motion with  penalty"}
 
-### BM with reflection: drift=0, sigma=1, X0=1 and penalty
-SD_RF <- function(begin, end,step=0.01,a=100,p=0.1,r=1, X0=0){
-  t<-seq(begin,end,step) ### create sequence 
-  n=length(t)
-  dt  <- step
-  dw<-rnorm(n, 0, sqrt(step))
-  X<-NULL
-  X[1] <- X0
-  ## penalty function
-penalty<- function(a,p,r,x){
- ifelse(x>=0,0,a*((abs(x))^p))
-}
-  for (i in 2:n) {
-     X[i] <-  X[i-1] + penalty(a,p,r,X[i-1])*dt + dw[i]
-  }
-  return(data.frame(t,X));
-}
-
-X1<-SD_RF(0,10,step = 0.01,X0=1)
+SDE_RF <- function(begin, end,step=0.01,drift=0,sigma=1,a=100,p=0.1,r=1, X0=0){
+   t<-seq(begin,end,step) ### create sequence 
+   n=length(t)
+   dt  <- step
+   dw<-rnorm(n, 0, sqrt(step))
+   X<-NULL
+   X[1] <- X0
+   ## penalty function
+   penalty<- function(a,p,r,x){
+     ifelse(x>=0,0,r*a*((abs(x))^p))
+   }
+   if(is.function(drift) & is.function(sigma)){
+   ## drift
+   d<- as.function(alist(x=,drift))
+   drift<-d(1)
+   ## sigma
+   sig<- as.function(alist(x=,sigma))
+   sigma<-sig(1)
+   for (i in 2:n) {
+     X[i] <-  X[i-1]+ drift(X[i-1])*dt + penalty(a,p,r,X[i-1])*dt + sigma(X[i-1])*dw[i]
+     }
+   }
+   else if(is.function(drift) & !is.function(sigma)){
+       ## drift
+       d<- as.function(alist(x=,drift))
+       drift<-d(1)
+       for (i in 2:n) {
+       X[i] <-  X[i-1]+ drift(X[i-1])*dt + penalty(a,p,r,X[i-1])*dt + sigma*dw[i]
+     }
+     }
+   else if(!is.function(drift) & is.function(sigma)){
+       ## sigma
+       sig<- as.function(alist(x=,sigma))
+       sigma<-sig(1)
+       for (i in 2:n) {
+        X[i] <-  X[i-1]+ drift*dt + penalty(a,p,r,X[i-1])*dt + sigma(X[i-1])*dw[i]
+       }
+    } else {
+        for (i in 2:n) {
+        X[i] <-  X[i-1]+ drift*dt + penalty(a,p,r,X[i-1])*dt + sigma*dw[i]
+       }
+      }
+   return(data.frame(t,X));
+ }
+ 
+ ## Example
+ drift<-function(x){-1} 
+ sigma1<-function(x){1}
+ X1<-SDE_RF(0,1,step = 0.001,drift = drift, sigma = sigma1,
+            a=100,p=0.1,r=1,X0=1)
 X1%>%gather(key,value, X) %>%
     ggplot(aes(x=t, y=value)) +
     geom_line() +theme_bw()+
   ggtitle("") +
-  xlab("t") + ylab("X")
+  xlab("t") + ylab("Z")
 
 ```
 
@@ -141,118 +172,32 @@ knitr::include_graphics(
 
 
 
+\newpage
+## Obliquely reflected Ornstein-Uhlenbeck process with  penalty term
 
-
-
-
-
-
-
-
-#  2-D Brownian motion with $\epsilon=0.01, X(0)=1$ and time horizon $t=10$ 
-$$ 
-\vec{Z(t+\epsilon)}-\vec{Z(t)}\sim \mathcal{N}(\vec{0},\Sigma)
-$$
-where $\Sigma=\begin{pmatrix}\epsilon & 0\\0 & \epsilon\end{pmatrix}$ and $\vec{Z(.)}$ is a BM with 2-D
-
-
-```{r ,fig.width=6,fig.height=4}
-### function to simulate multidimentional Brownian Motion
-Multi_BrownianM<-function(Begin, End,Step, X0){
-  t<-seq(Begin,End,Step)
-  n=length(t)-1
-  mu <- c(0,0) # Mean 
-  sigma <- matrix(c(Step, 0, 0, Step),2)
-  Xt<-apply(rbind(X0, mvrnorm(n, mu = mu, Sigma = sigma )),2,cumsum)
-  colnames(Xt) <- c("Xt","Yt")
-  return(data.frame(t,Xt))
-}
-
-X2<-Multi_BrownianM(0,10,Step = 0.01,X0=c(1,-1))
-
-par(mfrow=c(1,2))
-X2%>% gather(key,value, Xt, Yt) %>%
-    ggplot(aes(x=t, y=value, colour=key)) +
-    geom_line() +theme_bw()+
-  ggtitle("Brownian Motion") +
-  xlab("t") + ylab("Value")
-
-ggplot(data = X2, aes(x=Xt, y=Yt)) +
-    geom_point() +theme_bw()+
-  ggtitle("Brownian Motio in 2-D") +
-  xlab("Xt") + ylab("Yt")
-
-#plot(X1$Xt,X1$Yt, lwd=2,xlab="X(t)", ylab="Y(t)",
-#     main="Brownian Motio in 2-D")
-
-```
-
-
-#  Ornstein-Uhlenbeck process with $\epsilon=0.001, X(0)=2$ and time horizon $t=2$ 
 $$ 
 dX(t)=3(2-X(t))dt +2dW(t)
 $$
 
 ```{r ,fig.width=6,fig.height=4}
-### simulate ORNSTEIN-UHLENBECK  Process
-#Mu=long run mean, lambda = mean reversion speed sigma=
-#set.seed(12345)
-ornstein_uhlenbeck <- function(Begin, End,Step,Mu,lambda,sigma,X0){
-  t<-seq(Begin,End,Step) ### create sequence 
-  n=length(t)
-  dt  <- Step
-  dw<-rnorm(n, 0, sqrt(Step))
-  X<-NULL
-  X[1] <- X0
-  for (i in 2:n) {
-    X[i]  <-  X[i-1] + lambda*(Mu-X[i-1])*dt + sigma*dw[i-1]
-  }
-  return(data.frame(t,X));
-}
-
-X3<-ornstein_uhlenbeck(0,2,Step = 0.001,Mu=2,lambda = 3,sigma = 2,X0=2)
-ggplot(data = X3, aes(x=t, y=X)) +
+## Example
+ drift<-function(x){3*(2-x)} 
+ sigma1<-function(x){2}
+ X1<-SDE_RF(0,1,step = 0.001,drift = drift, sigma = sigma1,
+            a=100,p=0.1,r=1,X0=1)
+X1%>%gather(key,value, X) %>%
+    ggplot(aes(x=t, y=value)) +
     geom_line() +theme_bw()+
-  ggtitle("Ornstein-Uhlenbeck process") +
-  xlab("t") + ylab("X(t)")
-```
-
-
-
-
-#  Ornstein-Uhlenbeck process repeated with step $\epsilon=0.002, X(0)=2$ and time horizon $t=2$ 
-
-```{r ,fig.width=6,fig.height=4}
-
-X4<-ornstein_uhlenbeck(0,4,Step = 0.002,Mu=2,lambda = 3,sigma = 2,X0=2)
-ggplot(data = X4, aes(x=t, y=X)) +
-    geom_line() +theme_bw()+
-  ggtitle("Ornstein-Uhlenbeck process") +
-  xlab("t") + ylab("X(t)")
-
-### Quality of simulation
-Distance<- max(abs(X4-X3))
-Distance
-```
-
-
-
-# Comparing Ornstein-Uhlenbeck processes using KS test
-
-```{r ,fig.width=6,fig.height=4}
-ks_p_value<-NULL
-K<-100
-for (i in 1:K) {
-  Yt1<-ornstein_uhlenbeck(0,2,Step = 0.001,Mu=2,lambda = 3,sigma = 2,X0=5) 
-  Yt2<-ornstein_uhlenbeck(0,4,Step = 0.002,Mu=2,lambda = 3,sigma = 2,X0=5)
-  ks_p_value[i]<-ks.test(Yt1$X,Yt2$X)$p.value
-}
-
-plot(ks_p_value,type="o", xlab="Simulation",ylab="p-value",
-     main="Plot of KS p-values")
-points(rep(0.05,K),type = "l", col="red")
+  ggtitle("") +
+  xlab("t") + ylab("Z")
 
 ```
+
+
+
+
+
+
 
 
 
