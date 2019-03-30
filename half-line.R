@@ -2,7 +2,7 @@
  # end= end time of the process
  #step= incremental time step
  # a, p for penalty term, r=reflection, X0= intitial starting point
- #  drift and sigma should be  functions
+ #  drift and sigma related to the process must be functions or numbers  be  functions
  SDE_RF <- function(begin, end,step=0.01,drift=0,sigma=1,a=100,p=0.1,r=1, X0=0){
    t<-seq(begin,end,step) ### create sequence 
    n=length(t)
@@ -49,9 +49,11 @@
  }
  
  ## Example
- ## first defined your drift and sigma function
+ ## Your drift and sigma must be functions or numbers 
  drift<-function(x){4*(2-x)} # Unstein-Uhlenbeck drift
  sigma1<-function(x){2*x}
  BM<-SDE_RF(0,10,step = 0.001,drift = drift, sigma = sigma1)
  plot(BM$t,BM$X, type="l", xlab="X", ylab="t")
+ 
+ 
       
