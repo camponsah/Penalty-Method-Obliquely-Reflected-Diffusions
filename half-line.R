@@ -2,7 +2,7 @@
  # end= end time of the process
  #step= incremental time step
  # a, p for penalty term, r=reflection, X0= intitial starting point
- #  drift and sigma related to the process must be functions or numbers  be  functions
+ #  drift and sigma related to the process must be functions or numbers.
  SDE_RF <- function(begin, end,step=0.01,drift=0,sigma=1,a=100,p=0.1,r=1, X0=0){
    t<-seq(begin,end,step) ### create sequence 
    n=length(t)
